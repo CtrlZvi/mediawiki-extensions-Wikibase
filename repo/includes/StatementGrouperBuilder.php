@@ -65,6 +65,8 @@ class StatementGrouperBuilder {
 		StatementGuidParser $statementGuidParser
 	) {
 		$this->specifications = $specifications;
+		$debug = print_r($specifications, TRUE);
+		wfDebugLog( 'wikibase', "Statement specifications: ${debug}" );
 		$this->dataTypeLookup = $dataTypeLookup;
 		$this->statementGuidParser = $statementGuidParser;
 	}
@@ -77,6 +79,8 @@ class StatementGrouperBuilder {
 		$groupers = [];
 
 		foreach ( $this->specifications as $entityType => $filterSpecs ) {
+			$debug = print_r($filterSpecs, TRUE);
+			wfDebugLog( 'wikibase', "Processing filter specification ${debug} for entity type ${entityType}" );
 			$groupers[$entityType] = $filterSpecs === null
 				? new NullStatementGrouper()
 				: $this->newFilteringStatementGrouper( $filterSpecs );
@@ -95,6 +99,8 @@ class StatementGrouperBuilder {
 		$filters = [];
 
 		foreach ( $filterSpecs as $groupIdentifier => $spec ) {
+			$debug = print_r($spec, TRUE);
+			wfDebugLog( 'wikibase', "Processing specification ${debug} for identifier ${groupIdentifier}" );
 			$filters[$groupIdentifier] = $spec === null
 				? null
 				: $this->newStatementFilter( $spec );
@@ -110,6 +116,8 @@ class StatementGrouperBuilder {
 	 * @return StatementFilter
 	 */
 	private function newStatementFilter( array $spec ) {
+		$debug = print_r($spec, TRUE);
+		wfDebugLog( 'wikibase', "Processing statement filter specification ${debug}" );
 		$this->requireField( $spec, 'type' );
 
 		switch ( $spec['type'] ) {
