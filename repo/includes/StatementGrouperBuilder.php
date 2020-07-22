@@ -136,6 +136,8 @@ class StatementGrouperBuilder {
 	 * @throws InvalidArgumentException
 	 */
 	private function requireField( array $spec, $field ) {
+		$debug = print_r($spec, TRUE);
+		wfDebugLog( 'wikibase', "Requiring ${field} in ${debug}" );
 		if ( !array_key_exists( $field, $spec ) ) {
 			throw new InvalidArgumentException(
 				"Statement group configuration misses required field '$field'"
