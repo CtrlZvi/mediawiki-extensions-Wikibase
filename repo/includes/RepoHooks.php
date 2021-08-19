@@ -32,6 +32,7 @@ use SkinTemplate;
 use StubUserLang;
 use Title;
 use User;
+use Wikibase\DataModel\Entity\Int32EntityId;
 use Wikibase\DataModel\Entity\Item;
 use Wikibase\DataModel\Entity\Property;
 use Wikibase\Lib\Formatters\AutoCommentFormatter;
@@ -938,6 +939,70 @@ final class RepoHooks {
 						. ' You can enable imports using the "allowEntityImport" setting.'
 				);
 			}
+		}
+	}
+
+		/**
+		 * This hook is called when a page import is completed.
+		 *
+		 * @since 1.35
+		 *
+		 * @param Title $title Title under which the revisions were imported
+		 * @param ForeignTitle $foreignTitle ForeignTitle object based on data provided by the XML file
+		 * @param int $revCount Number of revisions in the XML file
+		 * @param int $sRevCount Number of successfully imported revisions
+		 * @param array $pageInfo Associative array of page information
+		 * @return bool|void True or no return value to continue or false to abort
+		 */
+	public function onAfterImportPage(
+		$title,
+		$foreignTitle,
+		$revCount,
+		$sRevCount,
+		$pageInfo
+	) {
+		$contentModels = WikibaseRepo::getContentModelMappings();
+		$pageContentModel = $title->getContentModel();
+		if ( !in_array( $pageContentModel, $contentModels ) ) {
+			return;
+		}
+
+		$highestId = MediaWikiServices::getInstance()
+			->getDBLoadBalancer()
+			->getConnection( DB_REPLICA )
+			->selectRow(
+				'wb_id_counters',
+				'id_value',
+				[ 'id_type' => $pageContentModel ],
+				__METHOD__
+			);
+
+		if ( !$highestId ) {
+			$storedId = 0;
+		} else {
+			$storedId = (int)$highestId->id_value;
+		}
+
+		$entityIdLookup = WikibaseRepo::getEntityIdLookup();
+		$id = $entityIdLookup->getEntityIdForTitle( $title );
+		if ( !$id instanceof Int32EntityId ) {
+			return;
+		}
+		$newId = $id->getNumericId();
+		if ( $newId > $storedId ) {
+			MediaWikiServices::getInstance()
+				->getDBLoadBalancer()
+				->getConnection( DB_PRIMARY )
+				->upsert(
+					'wb_id_counters',
+					[
+						'id_type' => $pageContentModel,
+						'id_value' => $newId,
+					],
+					'id_type',
+					[ "id_value = $newId" ],
+					__METHOD__
+				);
 		}
 	}
 
