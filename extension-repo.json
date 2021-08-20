@@ -760,7 +760,6 @@
 		}
 	},
 	"Hooks": {
-		"AfterImportPage": "\\Wikibase\\Repo\\RepoHooks::onAfterImportPage",
 		"APIQuerySiteInfoGeneralInfo": "\\Wikibase\\Repo\\RepoHooks::onAPIQuerySiteInfoGeneralInfo",
 		"APIQuerySiteInfoStatisticsInfo": "\\Wikibase\\Repo\\RepoHooks::onAPIQuerySiteInfoStatisticsInfo",
 		"AbuseFilter-contentToString": "\\Wikibase\\Repo\\RepoHooks::onAbuseFilterContentToString",
