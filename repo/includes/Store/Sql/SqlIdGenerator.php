@@ -63,6 +63,32 @@ class SqlIdGenerator implements IdGenerator {
 	}
 
 	/**
+	 * @see IdGenerator::consumeId
+	 *
+	 * @param string $type normally is content model id (e.g. wikibase-item or wikibase-property)
+	 * @param int $id the ID to consume
+	 *
+	 * @throws RuntimeException if consuming the ID failed
+	 */
+	public function consumeId( $type, $id ) {
+		$flags = ( $this->separateDbConnection === true ) ? ILoadBalancer::CONN_TRX_AUTOCOMMIT : 0;
+		$dbw = $this->db->connections()->getWriteConnectionRef( $flags );
+
+		$dbw->startAtomic( __METHOD__ );
+		$dbw->upsert(
+			'wb_id_counters',
+			[
+				'id_type' => $type,
+				'id_value' => $id,
+			],
+			'id_type',
+			[ "id_value = CASE WHEN id_value < $id THEN $id ELSE id_value END" ],
+			__METHOD__
+		);
+		$dbw->endAtomic( __METHOD__ );
+	}
+
+	/**
 	 * Generates and returns a new ID.
 	 *
 	 * @param IDatabase $database
