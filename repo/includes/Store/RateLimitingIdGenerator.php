@@ -37,4 +37,12 @@ class RateLimitingIdGenerator implements IdGenerator {
 		return $this->idGenerator->getNewId( $type );
 	}
 
+	public function consumeId( $type, $id ) {
+		if ( $this->contextSource->getUser()->pingLimiter( self::RATELIMIT_NAME ) ) {
+			throw new StorageException( Status::newFatal( 'actionthrottledtext' ) );
+		}
+
+		return $this->idGenerator->consumeId( $type, $id );
+	}
+
 }

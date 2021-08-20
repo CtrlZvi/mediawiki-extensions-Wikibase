@@ -31,6 +31,7 @@ use StubUserLang;
 use Throwable;
 use Title;
 use User;
+use Wikibase\DataModel\Entity\Int32EntityId;
 use Wikibase\DataModel\Entity\Item;
 use Wikibase\DataModel\Entity\Property;
 use Wikibase\Lib\Formatters\AutoCommentFormatter;
@@ -871,7 +872,8 @@ final class RepoHooks {
 	}
 
 	/**
-	 * Called by Import.php. Implemented to prevent the import of entities.
+	 * Called by Import.php. Verifies entity import is allowed, and, if
+	 * allowed, updates the id counter.
 	 *
 	 * @param object $importer unclear, see Bug T66657
 	 * @param array $pageInfo
@@ -880,19 +882,39 @@ final class RepoHooks {
 	 * @throws MWException
 	 */
 	public static function onImportHandleRevisionXMLTag( $importer, $pageInfo, $revisionInfo ) {
-		if ( isset( $revisionInfo['model'] ) ) {
-			$contentModels = WikibaseRepo::getContentModelMappings();
-			$allowImport = WikibaseRepo::getSettings()->getSetting( 'allowEntityImport' );
-
-			if ( !$allowImport && in_array( $revisionInfo['model'], $contentModels ) ) {
-				// Skip entities.
-				// XXX: This is rather rough.
-				throw new MWException(
-					'To avoid ID conflicts, the import of Wikibase entities is not supported.'
-						. ' You can enable imports using the "allowEntityImport" setting.'
-				);
-			}
+		if ( !isset( $revisionInfo['model'] ) ) {
+			return;
 		}
+
+		$contentModels = WikibaseRepo::getContentModelMappings();
+		$allowImport = WikibaseRepo::getSettings()->getSetting( 'allowEntityImport' );
+
+		if ( !in_array( $revisionInfo['model'], $contentModels ) ) {
+			return;
+		}
+
+		if ( !$allowImport ) {
+			// Skip entities.
+			// XXX: This is rather rough.
+			throw new MWException(
+				'To avoid ID conflicts, the import of Wikibase entities is not supported.'
+					. ' You can enable imports using the "allowEntityImport" setting.'
+			);
+		}
+
+		if ( !isset( $pageInfo['_title'] ) ) {
+			return;
+		}
+
+		$entityIdLookup = WikibaseRepo::getEntityIdLookup();
+		$id = $entityIdLookup->getEntityIdForTitle( $pageInfo['_title'] );
+		if ( !$id instanceof Int32EntityId ) {
+			return;
+		}
+		$newId = $id->getNumericId();
+
+		WikibaseRepo::getIdGenerator()
+			->consumeId( $revisionInfo['model'], $newId );
 	}
 
 	/**
