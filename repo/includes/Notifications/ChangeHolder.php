@@ -5,6 +5,7 @@ declare( strict_types = 1 );
 namespace Wikibase\Repo\Notifications;
 
 use Wikibase\Lib\Changes\Change;
+use Wikibase\Lib\Changes\EntityChange;
 
 /**
  * Notification channel based on a database table.
@@ -36,4 +37,25 @@ class ChangeHolder implements ChangeTransmitter {
 		return $this->changes;
 	}
 
+	/**
+	 * Retrieves changes by their revision ID.
+	 *
+	 * @param int $revisionId
+	 */
+	public function getChangesByRevisionId( int $revisionId ): array {
+		$changes = [];
+		foreach ( $this->changes as $change ) {
+			if ( !$change instanceof EntityChange ) {
+				continue;
+			}
+
+			if ( ( $change->getMetadata()['rev_id'] ?? 0 ) != $revisionId ) {
+				continue;
+			}
+
+			$changes[] = $change;
+		}
+
+		return $changes;
+	}
 }

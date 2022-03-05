@@ -63,7 +63,7 @@ class RecentChangeSaveHookHandlerTest extends MediaWikiIntegrationTestCase {
 			'rc_user_text' => 'some_user',
 		];
 		$recentChange = $this->newStubRecentChangeWithAttributes( $recentChangeAttrs );
-		$entityChange = $this->newEntityChange();
+		$entityChange = $this->newEntityChange( $recentChange->getAttribute( 'rc_this_oldid' ) );
 
 		$this->changeHolder->transmitChange( $entityChange );
 		$this->subscriptionLookup->method( 'getSubscribers' )
@@ -90,7 +90,7 @@ class RecentChangeSaveHookHandlerTest extends MediaWikiIntegrationTestCase {
 		$recentChange = $this->newStubRecentChangeWithAttributes( $recentChangeAttrs );
 		$recentChange->method( 'getPerformerIdentity' )
 			->willReturn( $testUser );
-		$entityChange = $this->newEntityChange();
+		$entityChange = $this->newEntityChange( $recentChange->getAttribute( 'rc_this_oldid' ) );
 
 		$this->changeHolder->transmitChange( $entityChange );
 		$this->subscriptionLookup->method( 'getSubscribers' )
@@ -122,7 +122,7 @@ class RecentChangeSaveHookHandlerTest extends MediaWikiIntegrationTestCase {
 			'rc_user_text' => 'some_user',
 		];
 		$recentChange = $this->newStubRecentChangeWithAttributes( $recentChangeAttrs );
-		$entityChange = $this->newEntityChange();
+		$entityChange = $this->newEntityChange( $recentChange->getAttribute( 'rc_this_oldid' ) );
 
 		$this->changeHolder->transmitChange( $entityChange );
 		$this->subscriptionLookup->method( 'getSubscribers' )
@@ -132,10 +132,148 @@ class RecentChangeSaveHookHandlerTest extends MediaWikiIntegrationTestCase {
 
 		$changeMetaData = $entityChange->getMetadata();
 		$this->assertArrayNotHasKey( 'bot', $changeMetaData );
-		$this->assertArrayNotHasKey( 'page_id', $changeMetaData );
-		$this->assertArrayNotHasKey( 'rev_id', $changeMetaData );
-		$this->assertArrayNotHasKey( 'parent_id', $changeMetaData );
+		$this->assertSame( 0, $changeMetaData['page_id'], 0 );
+		$this->assertSame( $recentChangeAttrs['rc_this_oldid'], $changeMetaData['rev_id'] );
+		$this->assertSame( 0, $changeMetaData['parent_id'], 0 );
 		$this->assertArrayNotHasKey( 'comment', $changeMetaData );
+	}
+
+	public function testGivenRecentChangeForEntityChange_schedulesDispatchJobForEntityChange() {
+		$recentChangeAttrs = [
+			'rc_timestamp' => 1234567890,
+			'rc_bot' => 1,
+			'rc_cur_id' => 42,
+			'rc_last_oldid' => 776,
+			'rc_this_oldid' => 777,
+			'rc_comment' => 'edit summary',
+			'rc_user' => 321,
+			'rc_user_text' => 'some_user',
+		];
+		$recentChange = $this->newStubRecentChangeWithAttributes( $recentChangeAttrs );
+		$entityChange = $this->newEntityChange( $recentChange->getAttribute( 'rc_this_oldid' ) );
+
+		$this->changeHolder->transmitChange( $entityChange );
+		$this->subscriptionLookup->method( 'getSubscribers' )
+			->willReturn( [ 'enwiki' ] );
+
+		$this->newHookHandler()->onRecentChange_save( $recentChange );
+
+		$wiki = WikiMap::getCurrentWikiDbDomain()->getId();
+		$jobQueueGroup = MediaWikiServices::getInstance()->getJobQueueGroupFactory()->makeJobQueueGroup( $wiki );
+		$queuedJobs = $jobQueueGroup->get( 'DispatchChanges' )->getAllQueuedJobs();
+		$job = $queuedJobs->current();
+		$this->assertNotNull( $job );
+		$actualEntityId = $job->getParams()['entityId'];
+		$this->assertSame( $entityChange->getEntityId()->getSerialization(), $actualEntityId );
+	}
+
+	public function testGivenRecentChangeForEntityChange_onlyHandlesRelevantEntityChanges() {
+		$recentChangeAttrs = [
+			'rc_timestamp' => 1234567890,
+			'rc_bot' => 1,
+			'rc_cur_id' => 42,
+			'rc_last_oldid' => 776,
+			'rc_this_oldid' => 777,
+			'rc_comment' => 'edit summary',
+			'rc_user' => 321,
+			'rc_user_text' => 'some_user',
+		];
+		$recentChange = $this->newStubRecentChangeWithAttributes( $recentChangeAttrs );
+		$relevantEntityChange = $this->newEntityChange( $recentChange->getAttribute( 'rc_this_oldid' ) );
+		$nonrelevantEntityChange = $this->newEntityChange( $recentChange->getAttribute( 'rc_this_oldid' ) + 1 );
+
+		$this->changeHolder->transmitChange( $relevantEntityChange );
+		$this->changeHolder->transmitChange( $nonrelevantEntityChange );
+		$this->subscriptionLookup->method( 'getSubscribers' )
+			->willReturn( [ 'enwiki' ] );
+
+		$this->newHookHandler()->onRecentChange_save( $recentChange );
+
+		$wiki = WikiMap::getCurrentWikiDbDomain()->getId();
+		$jobQueueGroup = MediaWikiServices::getInstance()->getJobQueueGroupFactory()->makeJobQueueGroup( $wiki );
+		$queuedJobs = $jobQueueGroup->get( 'DispatchChanges' )->getAllQueuedJobs();
+		foreach ( $queuedJobs as $job ) {
+			$this->assertNotNull( $job );
+			$actualEntityId = $job->getParams()['entityId'];
+			$this->assertSame( $relevantEntityChange->getEntityId()->getSerialization(), $actualEntityId );
+		}
+
+		$nonrelevantChangeMetaData = $nonrelevantEntityChange->getMetadata();
+		$this->assertArrayNotHasKey( 'bot', $nonrelevantChangeMetaData );
+		$this->assertNotSame( $recentChangeAttrs['rc_cur_id'], $nonrelevantChangeMetaData['page_id'] );
+		$this->assertNotSame( $recentChangeAttrs['rc_this_oldid'], $nonrelevantChangeMetaData['rev_id'] );
+		$this->assertNotSame( $recentChangeAttrs['rc_last_oldid'], $nonrelevantChangeMetaData['parent_id'] );
+		$this->assertArrayNotHasKey( 'rc_comment', $nonrelevantChangeMetaData );
+	}
+
+	public function testGivenRecentChangeForEntityChangeWithoutSubscribers_skipsSchedulingDispatchJob() {
+		$recentChangeAttrs = [
+			'rc_timestamp' => 1234567890,
+			'rc_bot' => 1,
+			'rc_cur_id' => 42,
+			'rc_last_oldid' => 776,
+			'rc_this_oldid' => 777,
+			'rc_comment' => 'edit summary',
+			'rc_user' => 321,
+			'rc_user_text' => 'some_user',
+		];
+		$recentChange = $this->newStubRecentChangeWithAttributes( $recentChangeAttrs );
+		$entityChange = $this->newEntityChange( $recentChange->getAttribute( 'rc_this_oldid' ) );
+
+		$this->changeHolder->transmitChange( $entityChange );
+		$this->subscriptionLookup->method( 'getSubscribers' )
+			->willReturn( [] );
+
+		$this->newHookHandler()->onRecentChange_save( $recentChange );
+
+		$wiki = WikiMap::getCurrentWikiDbDomain()->getId();
+		$jobQueueGroup = MediaWikiServices::getInstance()->getJobQueueGroupFactory()->makeJobQueueGroup( $wiki );
+		$this->assertTrue( $jobQueueGroup->get( 'DispatchChanges' )->isEmpty() );
+	}
+
+	public function testGivenRecentChangeForAddingSitelink_schedulesDispatchJob() {
+		$recentChangeAttrs = [
+			'rc_timestamp' => 1234567890,
+			'rc_bot' => 1,
+			'rc_cur_id' => 42,
+			'rc_last_oldid' => 776,
+			'rc_this_oldid' => 777,
+			'rc_comment' => 'edit summary',
+			'rc_user' => 321,
+			'rc_user_text' => 'some_user',
+		];
+		$recentChange = $this->newStubRecentChangeWithAttributes( $recentChangeAttrs );
+		$testItemChange = new ItemChange( [
+			'time' => '20210906122813',
+			'info' => [
+				'compactDiff' => new EntityDiffChangedAspects( [], [], [], [
+					'some_wiki' => [ null, 'some_page', false, ]
+				], false ),
+				'metadata' => [
+					'page_id' => 3,
+					'rev_id' => 777,
+					'parent_id' => 4,
+					'comment' => '...',
+					'user_text' => 'Admin',
+					'central_user_id' => 0,
+					'bot' => 0,
+				],
+			],
+			'user_id' => '43',
+			'revision_id' => '777',
+			'object_id' => 'Q50',
+			'type' => 'wikibase-item~update',
+		] );
+		$this->changeHolder->transmitChange( $testItemChange );
+		$this->subscriptionLookup->method( 'getSubscribers' )
+			->willReturn( [] );
+
+		$this->newHookHandler()->onRecentChange_save( $recentChange );
+
+		$jobQueueGroup = MediaWikiServices::getInstance()->getJobQueueGroupFactory()->makeJobQueueGroup(
+			WikiMap::getCurrentWikiDbDomain()->getId()
+		);
+		$this->assertFalse( $jobQueueGroup->get( 'DispatchChanges' )->isEmpty() );
 	}
 
 	private function newHookHandler(): RecentChangeSaveHookHandler {
@@ -157,8 +295,16 @@ class RecentChangeSaveHookHandlerTest extends MediaWikiIntegrationTestCase {
 		return $rc;
 	}
 
-	private function newEntityChange(): EntityChange {
-		return new EntityChange( [ 'type' => 'wikibase-someEntity~update', 'object_id' => 'Q1' ] );
+	private function newEntityChange( int $revisionId = null ): EntityChange {
+		return new EntityChange( [
+			'type' => 'wikibase-someEntity~update',
+			'object_id' => 'Q1',
+			'info' => $revisionId != null ? [
+				'metadata' => [
+					'rev_id' => $revisionId,
+				],
+			] : [],
+		] );
 	}
 
 }
