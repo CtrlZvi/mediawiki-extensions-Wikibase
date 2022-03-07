@@ -24,6 +24,7 @@ use Wikibase\Repo\Store\Sql\SqlSubscriptionLookup;
 use Wikibase\Repo\WikibaseRepo;
 use WikiMap;
 use Wikimedia\Assert\Assert;
+use Wikimedia\Rdbms\DatabaseDomain;
 
 $basePath = getenv( 'MW_INSTALL_PATH' ) !== false ? getenv( 'MW_INSTALL_PATH' ) : __DIR__ . '/../../../..';
 
@@ -93,9 +94,12 @@ class DispatchChanges extends Maintenance {
 			$clientSettings = WikibaseClient::getSettings();
 			$repoName = $clientSettings->getSetting( 'repoSiteId' );
 			$repoDb = MediaWikiServices::getInstance()->getMainConfig()->get( 'DBname' );
+			$repoSchema = MediaWikiServices::getInstance()->getMainConfig()->get( 'DBmwschema' );
+			$tablePrefix = MediaWikiServices::getInstance()->getMainConfig()->get( 'DBprefix' );
 
 			if ( !isset( $clientWikis[$repoName] ) ) {
-				$clientWikis[$repoName] = $repoDb;
+				$domain = new DatabaseDomain( $repoDb, $repoSchema, $tablePrefix );
+				$clientWikis[$repoName] = $domain->getId();
 			}
 		}
 
