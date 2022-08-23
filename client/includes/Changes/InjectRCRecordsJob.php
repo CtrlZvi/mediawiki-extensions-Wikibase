@@ -260,6 +260,8 @@ class InjectRCRecordsJob extends Job {
 
 		$dbw = $this->db->connections()->getWriteConnection();
 
+		$rcAttribs['rc_timestamp'] = $dbw->timestamp( $rcAttribs['rc_timestamp'] );
+
 		$dbw->startAtomic( __METHOD__ );
 
 		foreach ( $titles as $title ) {
