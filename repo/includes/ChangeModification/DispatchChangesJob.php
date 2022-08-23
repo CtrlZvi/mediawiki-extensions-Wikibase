@@ -26,6 +26,7 @@ use Wikibase\Lib\WikibaseSettings;
 use Wikibase\Repo\Store\Sql\SqlSubscriptionLookup;
 use Wikibase\Repo\Store\SubscriptionLookup;
 use Wikibase\Repo\WikibaseRepo;
+use WikiMap;
 use Wikimedia\Assert\Assert;
 
 /**
@@ -265,7 +266,7 @@ class DispatchChangesJob extends Job {
 		if ( WikibaseSettings::isClientEnabled() ) {
 			$clientSettings = WikibaseClient::getSettings();
 			$repoName = $clientSettings->getSetting( 'repoSiteId' );
-			$repoDb = MediaWikiServices::getInstance()->getMainConfig()->get( 'DBname' );
+			$repoDb = WikiMap::getCurrentWikiDbDomain()->getId();
 
 			if ( !isset( $clientWikis[$repoName] ) ) {
 				$clientWikis[$repoName] = $repoDb;
