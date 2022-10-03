@@ -3,10 +3,12 @@
 namespace Wikibase\Client\Store;
 
 use InvalidArgumentException;
+use MediaWiki\TitleFactory;
 use Wikibase\Client\Usage\EntityUsage;
 use Wikibase\Client\Usage\SubscriptionManager;
 use Wikibase\Client\Usage\UsageLookup;
 use Wikibase\Client\Usage\UsageTracker;
+use Wikibase\Client\WikibaseClient;
 use Wikibase\DataModel\Entity\EntityId;
 
 /**
@@ -84,6 +86,14 @@ class UsageUpdater {
 		// Subscribe to anything that was unused before.
 		if ( !empty( $newlyUsedEntities ) ) {
 			$this->subscriptionManager->subscribe( $this->clientId, $newlyUsedEntities );
+			// Now that we've subscribed, purge the page's cache so it will
+			// force a rerender
+			WikibaseClient::getPagerUpdater()->purgeWebCache(
+				[ ( new TitleFactory() )->newFromID( $pageId ) ],
+				[],
+				'',
+				'uid:?',
+			);
 		}
 	}
 

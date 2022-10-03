@@ -12,6 +12,7 @@ use Serializers\Serializer;
 use Site;
 use Wikibase\Client\Changes\AffectedPagesFinder;
 use Wikibase\Client\Changes\ChangeHandler;
+use Wikibase\Client\Changes\PageUpdater;
 use Wikibase\Client\DataAccess\DataAccessSnakFormatterFactory;
 use Wikibase\Client\DataAccess\ParserFunctions\Runner;
 use Wikibase\Client\DataAccess\ParserFunctions\StatementGroupRendererFactory;
@@ -406,6 +407,11 @@ final class WikibaseClient {
 	public static function getChangeHandler( ContainerInterface $services = null ): ChangeHandler {
 		return ( $services ?: MediaWikiServices::getInstance() )
 			->get( 'WikibaseClient.ChangeHandler' );
+	}
+
+	public static function getPagerUpdater( ContainerInterface $services = null ): PageUpdater {
+		return ( $services ?: MediaWikiServices::getInstance() )
+			->get( 'WikibaseClient.PageUpdater' );
 	}
 
 	public static function getRecentChangeFactory( ContainerInterface $services = null ): RecentChangeFactory {

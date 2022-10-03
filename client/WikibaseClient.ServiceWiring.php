@@ -19,6 +19,7 @@ use Wikibase\Client\CachingOtherProjectsSitesProvider;
 use Wikibase\Client\Changes\AffectedPagesFinder;
 use Wikibase\Client\Changes\ChangeHandler;
 use Wikibase\Client\Changes\ChangeRunCoalescer;
+use Wikibase\Client\Changes\PageUpdater;
 use Wikibase\Client\Changes\WikiPageUpdater;
 use Wikibase\Client\DataAccess\ClientSiteLinkTitleLookup;
 use Wikibase\Client\DataAccess\DataAccessSnakFormatterFactory;
@@ -652,6 +653,23 @@ return [
 			ObjectCache::getLocalClusterInstance(),
 			60 * 60
 		);
+	},
+
+	'WikibaseClient.PageUpdater' => function ( MediaWikiServices $services ): PageUpdater {
+		$logger = WikibaseClient::getLogger( $services );
+
+		$pageUpdater = new WikiPageUpdater(
+			$services->getJobQueueGroup(),
+			$logger,
+			$services->getStatsdDataFactory()
+		);
+
+		$settings = WikibaseClient::getSettings( $services );
+
+		$pageUpdater->setPurgeCacheBatchSize( $settings->getSetting( 'purgeCacheBatchSize' ) );
+		$pageUpdater->setRecentChangesBatchSize( $settings->getSetting( 'recentChangesBatchSize' ) );
+
+		return $pageUpdater;
 	},
 
 	'WikibaseClient.ParserOutputDataUpdater' => function ( MediaWikiServices $services ): ClientParserOutputDataUpdater {
