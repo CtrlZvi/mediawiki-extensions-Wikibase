@@ -3,7 +3,7 @@
 namespace Wikibase\Client\Store;
 
 use InvalidArgumentException;
-use MediaWiki\TitleFactory;
+use TitleFactory;
 use Wikibase\Client\Usage\EntityUsage;
 use Wikibase\Client\Usage\SubscriptionManager;
 use Wikibase\Client\Usage\UsageLookup;
