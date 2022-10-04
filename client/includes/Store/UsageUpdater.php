@@ -120,6 +120,14 @@ class UsageUpdater {
 		// Subscribe to anything that was added
 		if ( !empty( $currentlyUsedEntities ) ) {
 			$this->subscriptionManager->subscribe( $this->clientId, $currentlyUsedEntities );
+			// Now that we've subscribed, purge the page's cache so it will
+			// force a rerender
+			WikibaseClient::getPagerUpdater()->purgeWebCache(
+				[ ( new TitleFactory() )->newFromID( $pageId ) ],
+				[],
+				'',
+				'uid:?',
+			);
 		}
 		// Unsubscribe from anything that was pruned and is otherwise unused.
 		if ( !empty( $prunedUsages ) ) {
