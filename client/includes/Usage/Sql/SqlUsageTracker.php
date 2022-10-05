@@ -178,7 +178,7 @@ class SqlUsageTracker implements UsageTracker, UsageLookup {
 	 * @param int $pageId
 	 * @param EntityUsage[] $usages
 	 *
-	 * @return EntityUsage[] Usages that have been removed
+	 * @return EntityUsage[][] A pair of the usages that have been added and removed
 	 *
 	 * @throws InvalidArgumentException
 	 */
@@ -198,7 +198,7 @@ class SqlUsageTracker implements UsageTracker, UsageLookup {
 
 		$usageTable->removeUsages( $pageId, $removed );
 		$usageTable->addUsages( $pageId, $added );
-		return $removed;
+		return [ $added, $removed ];
 	}
 
 	/**

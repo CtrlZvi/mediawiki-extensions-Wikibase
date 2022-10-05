@@ -33,10 +33,10 @@ class NullUsageTracker implements UsageTracker, UsageLookup {
 	 * @param int $pageId
 	 * @param EntityUsage[] $usages
 	 *
-	 * @return EntityUsage[]
+	 * @return EntityUsage[][]
 	 */
 	public function replaceUsedEntities( int $pageId, array $usages ): array {
-		return [];
+		return [ [], [] ];
 	}
 
 	/**

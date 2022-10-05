@@ -35,7 +35,7 @@ interface UsageTracker {
 	 *
 	 * @see @ref md_docs_topics_usagetracking for details.
 	 *
-	 * @return EntityUsage[] Usages that have been removed
+	 * @return EntityUsage[][] A pair of the usages that have been added and removed
 	 */
 	public function replaceUsedEntities( int $pageId, array $usages ): array;
 

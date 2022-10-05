@@ -27,7 +27,7 @@ class NullUsageTrackerTest extends \PHPUnit\Framework\TestCase {
 
 	public function testReplaceUsedEntities() {
 		$instance = new NullUsageTracker();
-		$this->assertSame( [], $instance->replaceUsedEntities( 0, [] ) );
+		$this->assertSame( [ [], [] ], $instance->replaceUsedEntities( 0, [] ) );
 	}
 
 	public function testPruneUsages() {

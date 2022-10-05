@@ -125,26 +125,29 @@ class UsageUpdater {
 			throw new InvalidArgumentException( '$pageId must be an int!' );
 		}
 
-		$prunedUsages = $this->usageTracker->replaceUsedEntities( $pageId, $usages );
+		[ $newUsages, $prunedUsages ] = $this->usageTracker->replaceUsedEntities( $pageId, $usages );
 		$currentlyUsedEntities = $this->getEntityIds( $usages );
+		$newlyUsedEntities = $this->getEntityIds( $newUsages );
 
 		// Subscribe to anything that was added
 		if ( !empty( $currentlyUsedEntities ) ) {
 			$this->subscriptionManager->subscribe( $this->clientId, $currentlyUsedEntities );
-			// Now that we've subscribed, purge the page's cache so it will
-			// force a rerender
-			WikibaseClient::getPagerUpdater()->purgeWebCache(
-				[ ( new TitleFactory() )->newFromID( $pageId ) ],
-				[],
-				'',
-				'uid:?',
-			);
-			WikibaseClient::getPagerUpdater()->scheduleRefreshLinks(
-				[ ( new TitleFactory() )->newFromID( $pageId ) ],
-				[],
-				'',
-				'uid:?',
-			);
+			if ( !empty( $newlyUsedEntities ) ) {
+				// Now that we've subscribed, purge the page's cache so it will
+				// force a rerender
+				WikibaseClient::getPagerUpdater()->purgeWebCache(
+					[ ( new TitleFactory() )->newFromID( $pageId ) ],
+					[],
+					'',
+					'uid:?',
+				);
+				WikibaseClient::getPagerUpdater()->scheduleRefreshLinks(
+					[ ( new TitleFactory() )->newFromID( $pageId ) ],
+					[],
+					'',
+					'uid:?',
+				);
+			}
 		}
 		// Unsubscribe from anything that was pruned and is otherwise unused.
 		if ( !empty( $prunedUsages ) ) {
