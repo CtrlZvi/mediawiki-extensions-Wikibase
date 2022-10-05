@@ -127,12 +127,11 @@ class UsageUpdater {
 
 		[ $newUsages, $prunedUsages ] = $this->usageTracker->replaceUsedEntities( $pageId, $usages );
 		$currentlyUsedEntities = $this->getEntityIds( $usages );
-		$newlyUsedEntities = $this->getEntityIds( $newUsages );
 
 		// Subscribe to anything that was added
 		if ( !empty( $currentlyUsedEntities ) ) {
 			$this->subscriptionManager->subscribe( $this->clientId, $currentlyUsedEntities );
-			if ( !empty( $newlyUsedEntities ) ) {
+			if ( !empty( $newUsages ) ) {
 				// Now that we've subscribed, purge the page's cache so it will
 				// force a rerender
 				WikibaseClient::getPagerUpdater()->purgeWebCache(
@@ -141,6 +140,10 @@ class UsageUpdater {
 					'',
 					'uid:?',
 				);
+				// We need the refreshLinksJob because it's possible some of
+				// the missed changes could impact link processing. For
+				// example, they could embed coordinates for the GeoData
+				// extension.
 				WikibaseClient::getPagerUpdater()->scheduleRefreshLinks(
 					[ ( new TitleFactory() )->newFromID( $pageId ) ],
 					[],
