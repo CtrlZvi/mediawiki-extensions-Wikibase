@@ -88,7 +88,18 @@ class UsageUpdater {
 			$this->subscriptionManager->subscribe( $this->clientId, $newlyUsedEntities );
 			// Now that we've subscribed, purge the page's cache so it will
 			// force a rerender
+
+			// We have to already be in a job, because only jobs call this
+			// function Gow do we get the job info to be able to include root
+			// job params, uid, etc.?
+			// Unless link updates can be triggered by not a job?
 			WikibaseClient::getPagerUpdater()->purgeWebCache(
+				[ ( new TitleFactory() )->newFromID( $pageId ) ],
+				[],
+				'',
+				'uid:?',
+			);
+			WikibaseClient::getPagerUpdater()->scheduleRefreshLinks(
 				[ ( new TitleFactory() )->newFromID( $pageId ) ],
 				[],
 				'',
@@ -123,6 +134,12 @@ class UsageUpdater {
 			// Now that we've subscribed, purge the page's cache so it will
 			// force a rerender
 			WikibaseClient::getPagerUpdater()->purgeWebCache(
+				[ ( new TitleFactory() )->newFromID( $pageId ) ],
+				[],
+				'',
+				'uid:?',
+			);
+			WikibaseClient::getPagerUpdater()->scheduleRefreshLinks(
 				[ ( new TitleFactory() )->newFromID( $pageId ) ],
 				[],
 				'',
